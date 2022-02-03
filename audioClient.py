@@ -7,6 +7,7 @@ import types
 
 RESPEAKER_RATE = 16000
 RESPEAKER_WIDTH = 2
+chunk = 1024
 
 
 class EchoClientProtocol(asyncio.Protocol):
@@ -16,6 +17,7 @@ class EchoClientProtocol(asyncio.Protocol):
         self.frames = np.array(0, dtype=np.int16)
         self.chunks = 0
         self.callbacks = list()
+        self.first_frame_callback = None
 
     def connection_made(self, transport):
         self.transport = transport
@@ -30,8 +32,12 @@ class EchoClientProtocol(asyncio.Protocol):
 
     def data_received(self, data):
         a = np.fromstring(data, dtype=np.int16)
+
+        if(len(self.frames) < chunk):
+            self.first_frame_callback()
+
         self.frames = np.concatenate((self.frames, a), axis=0)
-        if(len(self.frames) > self.chunks * 8 * 1024):
+        if(len(self.frames) > self.chunks * 8 * chunk):
             self.transaction_end()
 
     def transaction_end(self):
@@ -53,9 +59,10 @@ class EchoClientProtocol(asyncio.Protocol):
     def register_callback(self, callback: types.FunctionType):
         self.callbacks.append(callback)
 
+    def register_firstframecallback(self, callback: types.FunctionType):
+        self.first_frame_callback = callback
+
     def connection_lost(self, exc):
         print('The server closed the connection')
-
-        self.transaction_end()
 
         self.on_con_lost.set_result(True)
