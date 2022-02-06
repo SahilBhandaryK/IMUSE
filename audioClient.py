@@ -1,8 +1,5 @@
 import asyncio
 import numpy as np
-import wave
-import DUET_AOA_HS as AOA_DUET
-import functions as lib_HS
 import types
 
 RESPEAKER_RATE = 16000
@@ -34,7 +31,8 @@ class EchoClientProtocol(asyncio.Protocol):
         a = np.fromstring(data, dtype=np.int16)
 
         if(len(self.frames) < chunk):
-            self.first_frame_callback()
+            if(self.first_frame_callback is not None):
+                self.first_frame_callback()
 
         self.frames = np.concatenate((self.frames, a), axis=0)
         if(len(self.frames) > self.chunks * 8 * chunk):
@@ -46,15 +44,6 @@ class EchoClientProtocol(asyncio.Protocol):
 
         for callback in self.callbacks:
             callback()
-
-        audio = []
-        audio.append(self.frames[0::8].tostring())
-        wf = wave.open("data/mic1.wav", 'wb')
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(RESPEAKER_RATE)
-        wf.writeframes(b''.join(audio))
-        wf.close()
 
     def register_callback(self, callback: types.FunctionType):
         self.callbacks.append(callback)

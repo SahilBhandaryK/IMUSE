@@ -6,7 +6,7 @@
 
 import numpy as np
 from scipy.io.wavfile import read,write
-from scipy import signal,stats 
+from scipy import signal,stats
 import math
 import numpy.ma as ma
 import scipy as sp
@@ -29,16 +29,16 @@ from twoDsmooth import twoDsmooth
 
 ################################################
 #     setp 1,2,3
-################################################ 
+################################################
 # 1. analyze the signals - STFT
 # 1) Create the spectrogram of the Left and Right channels.
 
 #constants used
 
-### Mode =1 : prominence will be used for peak detection
+### Mode =0 : prominence will be used for peak detection
 ### Mode =2 : height will be used.
 
-def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
+def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode, file="graphs\\"):
     eps=2.2204e-16
     numfreq = N_fft
     wlen = numfreq
@@ -73,12 +73,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         a[i]=np.multiply(a[i],freq)
     fmat=a.transpose()
 
-    
+
     ####################################################
 
     #2.calculate alpha and delta for each t-f point
     #2) For each time/frequency compare the phase and amplitude of the left and
-    #   right channels. This gives two new coordinates, instead of time-frequency 
+    #   right channels. This gives two new coordinates, instead of time-frequency
     #   it is phase-amplitude differences.
 
     R21 = (tf2+eps)/(tf1+eps)
@@ -88,22 +88,22 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     alpha=a-1./a #'alpha' (symmetric attenuation)
     #2.2HERE WE ESTIMATE THE RELATIVE DELAY (delta)
     delta = -(np.imag((np.log(R21)/fmat)))                  ### delta = delay * fs
-    
+
     # imaginary part, 'delta' relative delay
     ####################################################
 
     # 3.calculate weighted histogram
-    # 3) Build a 2-d histogram (one dimension is phase, one is amplitude) where 
+    # 3) Build a 2-d histogram (one dimension is phase, one is amplitude) where
     #    the height at any phase/amplitude is the count of time-frequency bins that
     #    have approximately that phase/amplitude.
 
     #p=1; q=0;
     #p=2; q=2;
-    h1=np.power(np.multiply(np.absolute(tf1),np.absolute(tf2)),p) #refer to run_duet.m line 45 for this. 
-                                                                  #It's just the python translation of matlab 
+    h1=np.power(np.multiply(np.absolute(tf1),np.absolute(tf2)),p) #refer to run_duet.m line 45 for this.
+                                                                  #It's just the python translation of matlab
     h2=np.power(np.absolute(fmat),q)
 
-    tfweight=np.multiply(h1,h2) #weights vector 
+    tfweight=np.multiply(h1,h2) #weights vector
     maxa=0.7;
     maxd=2*3.6;#histogram boundaries for alpha, delta
 
@@ -133,12 +133,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     X=np.linspace(-maxd,maxd,dbins)
     Y=np.linspace(-maxa,maxa,abins)
 
-    
+
     if peak_mode==0:
         col_peak,_=signal.find_peaks(np.max(A,axis=0),prominence=np.max(A)*prom_const)
     else:
         col_peak,_=signal.find_peaks(np.max(A,axis=0),height=np.max(A)*max_const)
- 
+
     row_peak = []
     for idx in col_peak:
         row_peak.append(np.argmax(A[:,idx]))
@@ -151,7 +151,7 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         plt.xlabel('delta')
         plt.ylabel('alpha')
         plt.tight_layout()
-        plt.show()
+        plt.savefig(file+"3d.png")
 
         # You can have a look at the histogram to look at the local peaks and what not
 
@@ -163,21 +163,18 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         plt.plot(X,np.max(A,axis=0))
         plt.xlabel('delta')
         plt.tight_layout()
-        plt.show()        
-        
-        
-        
-        
-        
+        plt.savefig(file+"delta.png")
+
+
+
     ######################################    step 4,5,6,7
     ######################################
     #4.peak centers (determined from histogram) THIS IS DONE BY HUMAN.
     #4) Determine how many peaks there are in the histogram.
-    #5) Find the location of each peak. 
+    #5) Find the location of each peak.
 
     numsources=len(col_peak);
 
     peakdelta=X[col_peak]
- 
-    return peakdelta
 
+    return peakdelta

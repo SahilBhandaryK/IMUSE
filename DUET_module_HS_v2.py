@@ -3,7 +3,7 @@
 
 import numpy as np
 from scipy.io.wavfile import read,write
-from scipy import signal,stats 
+from scipy import signal,stats
 import math
 import numpy.ma as ma
 import scipy as sp
@@ -26,7 +26,7 @@ from twoDsmooth import twoDsmooth
 
 ################################################
 #     setp 1,2,3
-################################################ 
+################################################
 # 1. analyze the signals - STFT
 # 1) Create the spectrogram of the Left and Right channels.
 
@@ -39,12 +39,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     eps=2.2204e-16
     numfreq = N_fft
     wlen = numfreq
-    awin=np.hamming(wlen) 
+    awin=np.hamming(wlen)
     x1=x[0,:]
     x2=x[1,:]
 
-    x1=x1/np.max(x1) 
-    x2=x2/np.max(x2) 
+    x1=x1/np.max(x1)
+    x2=x2/np.max(x2)
     tf1=tfanalysis(x1,awin,timestep,numfreq) #time-freq domain
     tf2=tfanalysis(x2,awin,timestep,numfreq) #time-freq domain
     x1=np.asmatrix(x1)
@@ -69,12 +69,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         a[i]=np.multiply(a[i],freq)
     fmat=a.transpose()
 
-    
+
     ####################################################
 
     #2.calculate alpha and delta for each t-f point
     #2) For each time/frequency compare the phase and amplitude of the left and
-    #   right channels. This gives two new coordinates, instead of time-frequency 
+    #   right channels. This gives two new coordinates, instead of time-frequency
     #   it is phase-amplitude differences.
 
     R21 = (tf2+eps)/(tf1+eps)
@@ -83,22 +83,22 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     alpha=a-1./a #'alpha' (symmetric attenuation)
     #2.2HERE WE ESTIMATE THE RELATIVE DELAY (delta)
     delta = -(np.imag((np.log(R21)/fmat)))                  ### delta = delay * fs
-    
+
     # imaginary part, 'delta' relative delay
     ####################################################
 
     # 3.calculate weighted histogram
-    # 3) Build a 2-d histogram (one dimension is phase, one is amplitude) where 
+    # 3) Build a 2-d histogram (one dimension is phase, one is amplitude) where
     #    the height at any phase/amplitude is the count of time-frequency bins that
     #    have approximately that phase/amplitude.
 
     #p=1; q=0;
     #p=2; q=2;
-    h1=np.power(np.multiply(np.absolute(tf1),np.absolute(tf2)),p) 
-                                                                  #It's just the python translation of matlab 
+    h1=np.power(np.multiply(np.absolute(tf1),np.absolute(tf2)),p)
+                                                                  #It's just the python translation of matlab
     h2=np.power(np.absolute(fmat),q)
 
-    tfweight=np.multiply(h1,h2) #weights vector 
+    tfweight=np.multiply(h1,h2) #weights vector
     maxa=0.7;
     maxd=2*3.6;#histogram boundaries for alpha, delta
 
@@ -114,7 +114,7 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     tfweight = np.asarray(ma.masked_array(tfweight, mask=(amask)).transpose().compressed())[0]
     # to do masking the same way it is done in Matlab/Octave, after applying a mask we must take transpose and compress
 
-    #determine histogram indices 
+    #determine histogram indices
 
     alphaind=np.around((abins-1)*(alphavec+maxa)/(2*maxa))
     deltaind=np.around((dbins-1)*(deltavec+maxd)/(2*maxd))
@@ -128,12 +128,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
     X=np.linspace(-maxd,maxd,dbins)
     Y=np.linspace(-maxa,maxa,abins)
 
-    
+
     if peak_mode==0:
         col_peak,_=signal.find_peaks(np.max(A,axis=0),prominence=np.max(A)*prom_const)
     else:
         col_peak,_=signal.find_peaks(np.max(A,axis=0),height=np.max(A)*max_const)
- 
+
     row_peak = []
     for idx in col_peak:
         row_peak.append(np.argmax(A[:,idx]))
@@ -158,17 +158,17 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         plt.plot(X,np.max(A,axis=0))
         plt.xlabel('delta')
         plt.tight_layout()
-        plt.show()        
-        
-        
-        
-        
-        
+        plt.show()
+
+
+
+
+
     ######################################    step 4,5,6,7
     ######################################
     #4.peak centers (determined from histogram) THIS IS DONE BY HUMAN.
     #4) Determine how many peaks there are in the histogram.
-    #5) Find the location of each peak. 
+    #5) Find the location of each peak.
 
     numsources=len(col_peak);
 
@@ -179,12 +179,12 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
 
     peaka=(peakalpha+np.sqrt(np.square(peakalpha)+4))/2;
     peaka=np.asarray(peaka)
- 
-    
+
+
 
     ##################################################
     #5.determine masks for separation
-    #6) Assign each time-frequency frame to the nearest peak in phase/amplitude 
+    #6) Assign each time-frequency frame to the nearest peak in phase/amplitude
     #  space. This partitions the spectrogram into sources (one peak per source)
 
     test = float("inf")
@@ -225,4 +225,3 @@ def DUET(x, fs, N_fft, timestep,p,q,prom_const, max_const,peak_mode,graph_mode):
         est[i]=esti[0:x1.shape[1]]
         #write('out'+str(i),fs,np.asarray(est[i]+0.05*x1)[0])
     return est, peakdelta, A
-
